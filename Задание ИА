@@ -1,0 +1,135 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import json
+from datetime import datetime
+
+class ExpenseTracker:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Expense Tracker")
+        self.root.geometry("700x500")
+        
+        self.data_file = "expenses.json"
+        self.expenses = self.load_data()
+
+        # Поля ввода
+        frame_input = tk.Frame(root, pady=10)
+        frame_input.pack()
+
+        tk.Label(frame_input, text="Сумма:").grid(row=0, column=0)
+        self.entry_amount = tk.Entry(frame_input)
+        self.entry_amount.grid(row=0, column=1, padx=5)
+
+        tk.Label(frame_input, text="Категория:").grid(row=0, column=2)
+        self.combo_category = ttk.Combobox(frame_input, values=["Еда", "Транспорт", "Развлечения", "Жилье", "Другое"])
+        self.combo_category.grid(row=0, column=3, padx=5)
+
+        tk.Label(frame_input, text="Дата (ГГГГ-ММ-ДД):").grid(row=1, column=0, pady=5)
+        self.entry_date = tk.Entry(frame_input)
+        self.entry_date.insert(0, datetime.now().strftime("%Y-%m-%d"))
+        self.entry_date.grid(row=1, column=1, pady=5)
+
+        btn_add = tk.Button(frame_input, text="Добавить расход", command=self.add_expense, bg="green", fg="white")
+        btn_add.grid(row=1, column=2, columnspan=2, sticky="we", padx=5)
+
+        # Фильтрация
+        frame_filter = tk.LabelFrame(root, text="Фильтры и Итоги", padx=10, pady=5)
+        frame_filter.pack(fill="x", padx=10)
+
+        tk.Label(frame_filter, text="Категория:").grid(row=0, column=0)
+        self.filter_cat = ttk.Combobox(frame_filter, values=["Все"] + ["Еда", "Транспорт", "Развлечения", "Жилье", "Другое"])
+        self.filter_cat.current(0)
+        self.filter_cat.grid(row=0, column=1, padx=5)
+
+        btn_filter = tk.Button(frame_filter, text="Применить", command=self.update_table)
+        btn_filter.grid(row=0, column=2, padx=5)
+
+        self.label_total = tk.Label(frame_filter, text="Итого: 0", font=("Arial", 10, "bold"))
+        self.label_total.grid(row=0, column=3, padx=20)
+
+        # Таблица
+        self.tree = ttk.Treeview(root, columns=("Сумма", "Категория", "Дата"), show='headings')
+        self.tree.heading("Сумма", text="Сумма")
+        self.tree.heading("Категория", text="Категория")
+        self.tree.heading("Дата", text="Дата")
+        self.tree.pack(pady=10, fill="both", expand=True)
+
+        self.update_table()
+
+    def add_expense(self):
+        amount = self.entry_amount.get()
+        category = self.combo_category.get()
+        date = self.entry_date.get()
+
+        # Валидация
+        try:
+            amount = float(amount)
+            if amount <= 0: raise ValueError
+            datetime.strptime(date, "%Y-%m-%d")
+        except ValueError:
+            messagebox.showerror("Ошибка", "Проверьте сумму (число > 0) и формат даты (ГГГГ-ММ-ДД)")
+            return
+
+        if not category:
+            messagebox.showwarning("Ошибка", "Выберите категорию")
+            return
+
+        new_item = {"amount": amount, "category": category, "date": date}
+        self.expenses.append(new_item)
+        self.save_data()
+        self.update_table()
+        self.entry_amount.delete(0, tk.END)
+
+    def update_table(self):
+        for i in self.tree.get_children():
+            self.tree.delete(i)
+        
+        selected_cat = self.filter_cat.get()
+        total = 0
+
+        for exp in self.expenses:
+            if selected_cat == "Все" or exp['category'] == selected_cat:
+                self.tree.insert("", tk.END, values=(exp['amount'], exp['category'], exp['date']))
+                total += exp['amount']
+        
+        self.label_total.config(text=f"Итого: {total:.2f}")
+
+    def save_data(self):
+        with open(self.data_file, "w", encoding="utf-8") as f:
+            json.dump(self.expenses, f, indent=4, ensure_ascii=False)
+
+    def load_data(self):
+        try:
+            with open(self.data_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError):
+            return []
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = ExpenseTracker(root)
+    root.mainloop()
+git init
+__pycache__/
+expenses.json
+.vscode/
+git add .
+git commit -m "Initial commit: basic Expense Tracker functionality"
+# Expense Tracker
+
+**Автор:** Роман Злобин
+
+## Описание
+Программа на Python с графическим интерфейсом для учета личных финансов. Позволяет добавлять расходы, фильтровать их по категориям и автоматически рассчитывает общую сумму.
+
+## Как использовать
+1. Запустите файл `main.py` (`python main.py`).
+2. Введите сумму расхода.
+3. Выберите категорию из выпадающего списка.
+4. Проверьте дату (по умолчанию стоит сегодняшняя).
+5. Нажмите "Добавить расход".
+6. Используйте фильтр над таблицей, чтобы увидеть расходы по конкретной категории.
+
+## Тестирование
+- **Валидация:** Если ввести текст вместо суммы или некорректную дату, программа выдаст предупреждение.
+- **Сохранение:** Данные автоматически записываются в `expenses.json` и доступны после перезапуска.
